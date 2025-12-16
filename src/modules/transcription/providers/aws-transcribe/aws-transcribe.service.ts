@@ -5,6 +5,7 @@ import {
   StartTranscriptionJobCommand,
   GetTranscriptionJobCommand,
   TranscriptionJob,
+  LanguageCode,
 } from '@aws-sdk/client-transcribe';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
@@ -17,15 +18,15 @@ export class AwsTranscribeService {
   private bucket: string;
 
   constructor(private configService: ConfigService) {
-    const region = this.configService.get<string>('aws.region');
+    const region = this.configService.get<string>('aws.region') || 'us-east-1';
     const credentials = {
-      accessKeyId: this.configService.get<string>('aws.accessKeyId'),
-      secretAccessKey: this.configService.get<string>('aws.secretAccessKey'),
+      accessKeyId: this.configService.get<string>('aws.accessKeyId') || '',
+      secretAccessKey: this.configService.get<string>('aws.secretAccessKey') || '',
     };
 
     this.transcribeClient = new TranscribeClient({ region, credentials });
     this.s3Client = new S3Client({ region, credentials });
-    this.bucket = this.configService.get<string>('aws.s3Bucket');
+    this.bucket = this.configService.get<string>('aws.s3Bucket') || '';
   }
 
   async uploadToS3(filePath: string, fileName: string): Promise<string> {
@@ -50,7 +51,7 @@ export class AwsTranscribeService {
   ): Promise<string> {
     const command = new StartTranscriptionJobCommand({
       TranscriptionJobName: jobName,
-      LanguageCode: languageCode,
+      LanguageCode: languageCode as LanguageCode,
       MediaFormat: 'mp3',
       Media: {
         MediaFileUri: audioUrl,
@@ -73,10 +74,24 @@ export class AwsTranscribeService {
     });
 
     const response = await this.transcribeClient.send(command);
-    const job: TranscriptionJob = response.TranscriptionJob;
+    const job = response.TranscriptionJob;
+
+    if (!job) {
+      return {
+        status: 'FAILED',
+        error: 'Job not found',
+      };
+    }
 
     if (job.TranscriptionJobStatus === 'COMPLETED') {
-      const transcriptUrl = job.Transcript.TranscriptFileUri;
+      const transcriptUrl = job.Transcript?.TranscriptFileUri;
+      if (!transcriptUrl) {
+        return {
+          status: 'FAILED',
+          error: 'Transcript URL not found',
+        };
+      }
+
       const transcriptResponse = await fetch(transcriptUrl);
       const transcriptData = await transcriptResponse.json();
 
@@ -91,7 +106,7 @@ export class AwsTranscribeService {
       };
     } else {
       return {
-        status: job.TranscriptionJobStatus,
+        status: job.TranscriptionJobStatus || 'UNKNOWN',
       };
     }
   }

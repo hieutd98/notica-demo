@@ -7,10 +7,11 @@ ENV APP_ENV=${APP_ENV}
 
 RUN echo "Running in $APP_ENV environment"
 
-# Install OpenSSL and other dependencies
+# Install OpenSSL, curl and other dependencies
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app directory
