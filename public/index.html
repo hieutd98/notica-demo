@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech-to-Text Comparison Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .file-name {
+            margin-top: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+            color: #666;
+            min-height: 40px;
+        }
+
+        .language-select {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .comparison-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .comparison-summary h3 {
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .summary-item {
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 5px solid;
+        }
+
+        .result-card.aws {
+            border-left-color: #FF9900;
+        }
+
+        .result-card.deepgram {
+            border-left-color: #13EF93;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .provider-name {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .aws .provider-name {
+            color: #FF9900;
+        }
+
+        .deepgram .provider-name {
+            color: #13EF93;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .transcript-box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            line-height: 1.8;
+            color: #333;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .meta-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .meta-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .meta-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Speech-to-Text Comparison</h1>
+        <p class="subtitle">Compare AWS Transcribe vs Deepgram performance</p>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <input type="file" id="audioFile" accept="audio/*">
+                <label for="audioFile" class="file-input-label">
+                    📁 Choose Audio File
+                </label>
+            </div>
+            <div class="file-name" id="fileName">No file selected</div>
+
+            <select class="language-select" id="languageSelect">
+                <option value="en-US">English (US)</option>
+                <option value="vi-VN">Vietnamese</option>
+                <option value="es-ES">Spanish</option>
+                <option value="fr-FR">French</option>
+                <option value="de-DE">German</option>
+                <option value="ja-JP">Japanese</option>
+                <option value="ko-KR">Korean</option>
+                <option value="zh-CN">Chinese (Simplified)</option>
+            </select>
+
+            <button class="upload-btn" id="uploadBtn" disabled>
+                🚀 Start Comparison
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your audio file...</p>
+            <p style="color: #666; margin-top: 10px;">This may take a moment</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="results" id="results">
+            <div class="comparison-summary" id="comparisonSummary"></div>
+            <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const audioFileInput = document.getElementById('audioFile');
+        const fileNameDiv = document.getElementById('fileName');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const languageSelect = document.getElementById('languageSelect');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorMessage = document.getElementById('errorMessage');
+        const comparisonSummary = document.getElementById('comparisonSummary');
+        const resultsContent = document.getElementById('resultsContent');
+
+        let selectedFile = null;
+
+        audioFileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                fileNameDiv.textContent = `Selected: ${selectedFile.name}`;
+                uploadBtn.disabled = false;
+            } else {
+                fileNameDiv.textContent = 'No file selected';
+                uploadBtn.disabled = true;
+            }
+        });
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // Hide previous results and errors
+            results.style.display = 'none';
+            errorMessage.style.display = 'none';
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
+
+            try {
+                const response = await fetch(`http://localhost:3000/transcription/upload?language=${languageSelect.value}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Upload failed');
+                }
+
+                displayResults(data.data);
+            } catch (error) {
+                errorMessage.textContent = `Error: ${error.message}`;
+                errorMessage.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        function displayResults(data) {
+            // Display comparison summary
+            comparisonSummary.innerHTML = `
+                <h3>⚡ Comparison Summary</h3>
+                <div class="summary-item">
+                    <span>File:</span>
+                    <strong>${data.fileName}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Language:</span>
+                    <strong>${data.languageCode}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Total Time:</span>
+                    <strong>${data.totalComparisonTime}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Faster Provider:</span>
+                    <strong>${data.comparison.faster}</strong>
+                </div>
+                <div class="summary-item">
+                    <span>Time Difference:</span>
+                    <strong>${data.comparison.timeDifference}</strong>
+                </div>
+            `;
+
+            // Display individual results
+            resultsContent.innerHTML = `
+                ${createResultCard('aws', 'AWS Transcribe', data.results.awsTranscribe)}
+                ${createResultCard('deepgram', 'Deepgram', data.results.deepgram)}
+            `;
+
+            results.style.display = 'block';
+        }
+
+        function createResultCard(provider, name, result) {
+            return `
+                <div class="result-card ${provider}">
+                    <div class="result-header">
+                        <span class="provider-name">${name}</span>
+                        <span class="status ${result.status.toLowerCase()}">${result.status}</span>
+                    </div>
+
+                    <div class="meta-info">
+                        <div class="meta-item">
+                            <div class="meta-label">Processing Time</div>
+                            <div class="meta-value">${result.duration}</div>
+                        </div>
+                        ${result.confidence ? `
+                            <div class="meta-item">
+                                <div class="meta-label">Confidence</div>
+                                <div class="meta-value">${(result.confidence * 100).toFixed(2)}%</div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${result.transcript ? `
+                        <div class="transcript-box">
+                            <strong>Transcript:</strong><br><br>
+                            ${result.transcript}
+                        </div>
+                    ` : ''}
+
+                    ${result.error ? `
+                        <div style="color: #dc3545; margin-top: 15px;">
+                            <strong>Error:</strong> ${result.error}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
