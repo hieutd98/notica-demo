@@ -49,9 +49,8 @@ export class AwsTranscribeService {
     jobName: string,
     languageCode: string = 'en-US',
   ): Promise<string> {
-    const command = new StartTranscriptionJobCommand({
+    const commandInput: any = {
       TranscriptionJobName: jobName,
-      LanguageCode: languageCode as LanguageCode,
       MediaFormat: 'mp3',
       Media: {
         MediaFileUri: audioUrl,
@@ -60,7 +59,16 @@ export class AwsTranscribeService {
         ShowSpeakerLabels: true,
         MaxSpeakerLabels: 10,
       },
-    });
+    };
+
+    // Auto-detect language or use specified language
+    if (languageCode === 'auto') {
+      commandInput.IdentifyLanguage = true;
+    } else {
+      commandInput.LanguageCode = languageCode as LanguageCode;
+    }
+
+    const command = new StartTranscriptionJobCommand(commandInput);
 
     await this.transcribeClient.send(command);
     return jobName;

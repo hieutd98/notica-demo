@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  UploadedFile,
-  UseInterceptors,
-  Query,
-  BadRequestException,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Post, Query, UploadedFile, UseInterceptors, } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { TranscriptionService } from './transcription.service';
@@ -40,7 +33,9 @@ export class TranscriptionController {
         );
         const mimetype = allowedTypes.test(file.mimetype);
 
-        if (mimetype && extname) {
+        console.log('mimetype: ', mimetype);
+        console.log('extenstion: ', extname);
+        if (extname) {
           return cb(null, true);
         } else {
           cb(
@@ -83,9 +78,7 @@ export class TranscriptionController {
         fs.unlinkSync(file.path);
       }
 
-      throw new BadRequestException(
-        `Transcription failed: ${error.message}`,
-      );
+      throw new BadRequestException(`Transcription failed: ${error.message}`);
     }
   }
 
@@ -146,9 +139,7 @@ export class TranscriptionController {
         fs.unlinkSync(file.path);
       }
 
-      throw new BadRequestException(
-        `Transcription failed: ${error.message}`,
-      );
+      throw new BadRequestException(`Transcription failed: ${error.message}`);
     }
   }
 }

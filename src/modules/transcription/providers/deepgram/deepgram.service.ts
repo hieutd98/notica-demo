@@ -21,15 +21,24 @@ export class DeepgramService {
     try {
       const audioBuffer = fs.readFileSync(filePath);
 
+      // Build transcription options
+      const options: any = {
+        model: 'nova-2',
+        smart_format: true,
+        punctuate: true,
+        diarize: true,
+      };
+
+      // Auto-detect language or use specified language
+      if (languageCode === 'auto') {
+        options.detect_language = true;
+      } else {
+        options.language = languageCode;
+      }
+
       const { result, error } = await this.deepgram.listen.prerecorded.transcribeFile(
         audioBuffer,
-        {
-          model: 'nova-2',
-          language: languageCode,
-          smart_format: true,
-          punctuate: true,
-          diarize: true,
-        },
+        options,
       );
 
       if (error) {
@@ -40,6 +49,7 @@ export class DeepgramService {
       const duration = (endTime - startTime) / 1000;
 
       const transcript = result.results.channels[0].alternatives[0].transcript;
+      const detectedLanguage = result.results.channels[0].detected_language;
 
       return {
         provider: 'Deepgram',
@@ -48,6 +58,7 @@ export class DeepgramService {
         error: null,
         duration: `${duration.toFixed(2)}s`,
         confidence: result.results.channels[0].alternatives[0].confidence,
+        detectedLanguage: detectedLanguage || null,
       };
     } catch (error) {
       const endTime = Date.now();
