@@ -370,7 +370,9 @@
             uploadBtn.disabled = true;
 
             try {
-              const response = await fetch(`http://localhost:3001/transcription/upload?language=${languageSelect.value}`, {
+              // Use current domain (works for both local and production)
+              const apiUrl = window.location.origin;
+              const response = await fetch(`${apiUrl}/transcription/upload?language=${languageSelect.value}`, {
                     method: 'POST',
                     body: formData
                 });

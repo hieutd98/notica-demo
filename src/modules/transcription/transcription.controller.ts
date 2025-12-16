@@ -1,4 +1,11 @@
-import { BadRequestException, Controller, Post, Query, UploadedFile, UseInterceptors, } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { TranscriptionService } from './transcription.service';
