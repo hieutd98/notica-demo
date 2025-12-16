@@ -301,6 +301,9 @@
                 </label>
             </div>
             <div class="file-name" id="fileName">No file selected</div>
+            <div style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;">
+                Supported formats: MP3, WAV, M4A, MP4, WebM, OGG, FLAC, AMR, AAC, WMA, OPUS, 3GP, AIFF, and more
+            </div>
 
             <select class="language-select" id="languageSelect">
                 <option value="auto">🔍 Auto Detect (Recommended)</option>
@@ -465,8 +468,9 @@
                     ` : ''}
 
                     ${result.error ? `
-                        <div style="color: #dc3545; margin-top: 15px;">
-                            <strong>Error:</strong> ${result.error}
+                        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 4px solid #dc3545;">
+                            <strong>⚠️ Error:</strong><br>
+                            <span style="margin-top: 8px; display: block;">${result.error}</span>
                         </div>
                     ` : ''}
                 </div>

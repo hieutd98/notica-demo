@@ -34,20 +34,23 @@ export class TranscriptionController {
         },
       }),
       fileFilter: (req, file, cb) => {
-        const allowedTypes = /mp3|wav|m4a|webm|ogg|flac/;
+        // Expanded format list - supports formats from AWS Transcribe and Deepgram
+        // AWS: AMR, FLAC, M4A, MP3, MP4, OGG, WebM, WAV
+        // Deepgram: MP3, WAV, FLAC, OGG, M4A, AAC, WMA, OPUS, AMR, 3GP, and more
+        const allowedTypes = /mp3|wav|m4a|mp4|webm|ogg|flac|amr|aac|wma|opus|3gp|aiff|aif|ape|avi|dss|m4p|m4v|mov|mpc|mpg|mpeg|qt|ra|rm|voc|wv/;
         const extname = allowedTypes.test(
           path.extname(file.originalname).toLowerCase(),
         );
         const mimetype = allowedTypes.test(file.mimetype);
 
         console.log('mimetype: ', mimetype);
-        console.log('extenstion: ', extname);
+        console.log('extension: ', extname);
         if (extname) {
           return cb(null, true);
         } else {
           cb(
             new BadRequestException(
-              'Only audio files (mp3, wav, m4a, webm, ogg, flac) are allowed',
+              'Unsupported audio format. Supported formats: mp3, wav, m4a, mp4, webm, ogg, flac, amr, aac, wma, opus, 3gp, aiff, ape, avi, and more',
             ),
             false,
           );
@@ -106,6 +109,29 @@ export class TranscriptionController {
           );
         },
       }),
+      fileFilter: (req, file, cb) => {
+        // Expanded format list - supports formats from AWS Transcribe and Deepgram
+        // AWS: AMR, FLAC, M4A, MP3, MP4, OGG, WebM, WAV
+        // Deepgram: MP3, WAV, FLAC, OGG, M4A, AAC, WMA, OPUS, AMR, 3GP, and more
+        const allowedTypes = /mp3|wav|m4a|mp4|webm|ogg|flac|amr|aac|wma|opus|3gp|aiff|aif|ape|avi|dss|m4p|m4v|mov|mpc|mpg|mpeg|qt|ra|rm|voc|wv/;
+        const extname = allowedTypes.test(
+          path.extname(file.originalname).toLowerCase(),
+        );
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        console.log('mimetype: ', mimetype);
+        console.log('extension: ', extname);
+        if (extname) {
+          return cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              'Unsupported audio format. Supported formats: mp3, wav, m4a, mp4, webm, ogg, flac, amr, aac, wma, opus, 3gp, aiff, ape, avi, and more',
+            ),
+            false,
+          );
+        }
+      },
     }),
   )
   async uploadWithProvider(

@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  TranscribeClient,
-  StartTranscriptionJobCommand,
   GetTranscriptionJobCommand,
-  TranscriptionJob,
   LanguageCode,
+  StartTranscriptionJobCommand,
+  TranscribeClient,
 } from '@aws-sdk/client-transcribe';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,11 +16,24 @@ export class AwsTranscribeService {
   private s3Client: S3Client;
   private bucket: string;
 
+  // AWS Transcribe supported formats
+  private readonly AWS_SUPPORTED_FORMATS = {
+    mp3: 'mp3',
+    mp4: 'mp4',
+    m4a: 'mp4',
+    wav: 'wav',
+    flac: 'flac',
+    ogg: 'ogg',
+    amr: 'amr',
+    webm: 'webm',
+  };
+
   constructor(private configService: ConfigService) {
     const region = this.configService.get<string>('aws.region') || 'us-east-1';
     const credentials = {
       accessKeyId: this.configService.get<string>('aws.accessKeyId') || '',
-      secretAccessKey: this.configService.get<string>('aws.secretAccessKey') || '',
+      secretAccessKey:
+        this.configService.get<string>('aws.secretAccessKey') || '',
     };
 
     this.transcribeClient = new TranscribeClient({ region, credentials });
@@ -44,14 +56,30 @@ export class AwsTranscribeService {
     return `https://${this.bucket}.s3.${this.configService.get<string>('aws.region')}.amazonaws.com/${key}`;
   }
 
+  private detectMediaFormat(fileName: string): string | null {
+    const ext = path.extname(fileName).toLowerCase().replace('.', '');
+    const mediaFormat = this.AWS_SUPPORTED_FORMATS[ext];
+    return mediaFormat || null;
+  }
+
   async startTranscription(
     audioUrl: string,
     jobName: string,
+    fileName: string,
     languageCode: string = 'en-US',
   ): Promise<string> {
+    const mediaFormat = this.detectMediaFormat(fileName);
+
+    if (!mediaFormat) {
+      const ext = path.extname(fileName).toLowerCase().replace('.', '');
+      throw new Error(
+        `AWS Transcribe does not support the file format: ${ext}. Supported formats: ${Object.keys(this.AWS_SUPPORTED_FORMATS).join(', ')}`,
+      );
+    }
+
     const commandInput: any = {
       TranscriptionJobName: jobName,
-      MediaFormat: 'mp3',
+      MediaFormat: mediaFormat,
       Media: {
         MediaFileUri: audioUrl,
       },
@@ -126,30 +154,60 @@ export class AwsTranscribeService {
   ): Promise<any> {
     const startTime = Date.now();
 
-    // Upload to S3
-    const audioUrl = await this.uploadToS3(filePath, fileName);
+    try {
+      // Check if format is supported
+      const mediaFormat = this.detectMediaFormat(fileName);
+      if (!mediaFormat) {
+        const ext = path.extname(fileName).toLowerCase().replace('.', '');
+        const endTime = Date.now();
+        const duration = (endTime - startTime) / 1000;
 
-    // Start transcription
-    const jobName = `transcription-${Date.now()}`;
-    await this.startTranscription(audioUrl, jobName, languageCode);
+        return {
+          provider: 'AWS Transcribe',
+          status: 'FAILED',
+          transcript: null,
+          error: `Unsupported format: ${ext}. AWS Transcribe only supports: ${Object.keys(this.AWS_SUPPORTED_FORMATS).join(', ')}`,
+          duration: `${duration.toFixed(2)}s`,
+        };
+      }
 
-    // Poll for result
-    let result;
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
-      result = await this.getTranscriptionResult(jobName);
-    } while (result.status === 'IN_PROGRESS');
+      // Upload to S3
+      const audioUrl = await this.uploadToS3(filePath, fileName);
 
-    const endTime = Date.now();
-    const duration = (endTime - startTime) / 1000;
+      // Start transcription
+      const jobName = `transcription-${Date.now()}`;
+      await this.startTranscription(audioUrl, jobName, fileName, languageCode);
 
-    return {
-      provider: 'AWS Transcribe',
-      status: result.status,
-      transcript: result.transcript || null,
-      error: result.error || null,
-      duration: `${duration.toFixed(2)}s`,
-      jobName,
-    };
+      // Poll for result
+      let result;
+      do {
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
+        result = await this.getTranscriptionResult(jobName);
+      } while (result.status === 'IN_PROGRESS');
+
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+
+      console.log('aws result: ', result);
+      return {
+        provider: 'AWS Transcribe',
+        status: result.status,
+        transcript: result.transcript || null,
+        error: result.error || null,
+        duration: `${duration.toFixed(2)}s`,
+        jobName,
+      };
+    } catch (error) {
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+
+      return {
+        provider: 'AWS Transcribe',
+        status: 'FAILED',
+        transcript: null,
+        error: error.message,
+        duration: `${duration.toFixed(2)}s`,
+      };
+    }
   }
 }

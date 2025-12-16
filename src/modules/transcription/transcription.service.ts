@@ -25,6 +25,7 @@ export class TranscriptionService {
       ),
       this.deepgramService.transcribeFile(
         filePath,
+        fileName,
         languageCode.split('-')[0],
       ), // Deepgram uses 'en' instead of 'en-US'
     ]);
@@ -64,6 +65,7 @@ export class TranscriptionService {
     } else {
       return this.deepgramService.transcribeFile(
         filePath,
+        fileName,
         languageCode.split('-')[0],
       );
     }
