@@ -295,7 +295,7 @@
 
         <div class="upload-section">
             <div class="file-input-wrapper">
-                <input type="file" id="audioFile" accept="audio/*">
+              <input type="file" id="audioFile" accept="audio/*,video/*">
                 <label for="audioFile" class="file-input-label">
                     📁 Choose Audio File
                 </label>
@@ -375,26 +375,64 @@
             try {
               // Use current domain (works for both local and production)
               const apiUrl = window.location.origin;
-              const response = await fetch(`${apiUrl}/transcription/upload?language=${languageSelect.value}`, {
+
+              // Upload and get job ID
+              const uploadResponse = await fetch(`${apiUrl}/transcription/upload?language=${languageSelect.value}`, {
                     method: 'POST',
                     body: formData
                 });
 
-                const data = await response.json();
+              const uploadData = await uploadResponse.json();
 
-                if (!response.ok) {
-                    throw new Error(data.message || 'Upload failed');
+              if (!uploadResponse.ok) {
+                throw new Error(uploadData.message || 'Upload failed');
                 }
 
-                displayResults(data.data);
+              // Poll for results
+              const jobId = uploadData.jobId;
+              await pollJobStatus(jobId, apiUrl);
             } catch (error) {
                 errorMessage.textContent = `Error: ${error.message}`;
                 errorMessage.style.display = 'block';
-            } finally {
                 loading.style.display = 'none';
                 uploadBtn.disabled = false;
             }
         });
+
+        async function pollJobStatus(jobId, apiUrl) {
+          const maxAttempts = 500;
+          let attempts = 0;
+
+          while (attempts < maxAttempts) {
+            try {
+              const response = await fetch(`${apiUrl}/transcription/job/${jobId}`);
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.message || 'Failed to get job status');
+              }
+
+              const job = data.job;
+
+              if (job.status === 'completed') {
+                displayResults(job.result);
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+                return;
+              } else if (job.status === 'failed') {
+                throw new Error(job.error || 'Transcription failed');
+              }
+
+              // Job is still pending or processing, wait and try again
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              attempts++;
+            } catch (error) {
+              throw error;
+            }
+          }
+
+          throw new Error('Job timeout - please try again');
+        }
 
         function displayResults(data) {
             // Display comparison summary

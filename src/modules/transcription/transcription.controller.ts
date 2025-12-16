@@ -1,6 +1,9 @@
 import {
   BadRequestException,
   Controller,
+  Get,
+  NotFoundException,
+  Param,
   Post,
   Query,
   UploadedFile,
@@ -9,12 +12,16 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { TranscriptionService } from './transcription.service';
+import { JobManagerService } from './job-manager.service';
 import * as path from 'path';
 import * as fs from 'fs';
 
 @Controller('transcription')
 export class TranscriptionController {
-  constructor(private transcriptionService: TranscriptionService) {}
+  constructor(
+    private transcriptionService: TranscriptionService,
+    private jobManagerService: JobManagerService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(
@@ -69,18 +76,18 @@ export class TranscriptionController {
     const languageCode = language || 'en-US';
 
     try {
-      const result = await this.transcriptionService.compareTranscriptions(
-        file.path,
-        file.originalname,
-        languageCode,
-      );
-
-      // Clean up uploaded file after processing
-      fs.unlinkSync(file.path);
+      // Return job ID immediately instead of waiting for transcription
+      const jobId =
+        await this.transcriptionService.startCompareTranscriptionsAsync(
+          file.path,
+          file.originalname,
+          languageCode,
+        );
 
       return {
         success: true,
-        data: result,
+        jobId,
+        message: 'Transcription job started. Use GET /transcription/job/:jobId to check status',
       };
     } catch (error) {
       // Clean up uploaded file if error occurs
@@ -88,7 +95,7 @@ export class TranscriptionController {
         fs.unlinkSync(file.path);
       }
 
-      throw new BadRequestException(`Transcription failed: ${error.message}`);
+      throw new BadRequestException(`Failed to start transcription: ${error.message}`);
     }
   }
 
@@ -152,19 +159,19 @@ export class TranscriptionController {
     const languageCode = language || 'en-US';
 
     try {
-      const result = await this.transcriptionService.transcribeWithProvider(
-        provider,
-        file.path,
-        file.originalname,
-        languageCode,
-      );
-
-      // Clean up uploaded file after processing
-      fs.unlinkSync(file.path);
+      // Return job ID immediately instead of waiting for transcription
+      const jobId =
+        await this.transcriptionService.startTranscribeWithProviderAsync(
+          provider,
+          file.path,
+          file.originalname,
+          languageCode,
+        );
 
       return {
         success: true,
-        data: result,
+        jobId,
+        message: 'Transcription job started. Use GET /transcription/job/:jobId to check status',
       };
     } catch (error) {
       // Clean up uploaded file if error occurs
@@ -172,7 +179,31 @@ export class TranscriptionController {
         fs.unlinkSync(file.path);
       }
 
-      throw new BadRequestException(`Transcription failed: ${error.message}`);
+      throw new BadRequestException(`Failed to start transcription: ${error.message}`);
     }
+  }
+
+  @Get('job/:jobId')
+  async getJobStatus(@Param('jobId') jobId: string) {
+    const job = this.jobManagerService.getJob(jobId);
+
+    if (!job) {
+      throw new NotFoundException(`Job with ID ${jobId} not found`);
+    }
+
+    return {
+      success: true,
+      job: {
+        id: job.id,
+        status: job.status,
+        fileName: job.fileName,
+        languageCode: job.languageCode,
+        provider: job.provider,
+        result: job.result,
+        error: job.error,
+        createdAt: job.createdAt,
+        completedAt: job.completedAt,
+      },
+    };
   }
 }
