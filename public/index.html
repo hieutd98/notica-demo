@@ -631,12 +631,6 @@
                             <div class="meta-label">Processing Time</div>
                             <div class="meta-value">${result.duration}</div>
                         </div>
-                        ${result.confidence ? `
-                            <div class="meta-item">
-                                <div class="meta-label">Confidence</div>
-                                <div class="meta-value">${(result.confidence * 100).toFixed(2)}%</div>
-                            </div>
-                        ` : ''}
                         ${result.detectedLanguage ? `
                             <div class="meta-item">
                                 <div class="meta-label">Detected Language</div>
@@ -645,7 +639,19 @@
                         ` : ''}
                     </div>
 
-                    ${result.transcript ? `
+                    ${result.speakers && result.speakers.length > 0 ? `
+                        <div class="transcript-box">
+                            <strong>Transcript (${result.speakers.length} speaker${result.speakers.length > 1 ? 's' : ''}):</strong><br><br>
+                            ${result.speakers.map((s, idx) => `
+                                <div style="margin-bottom: 15px; padding: 10px; background: ${idx % 2 === 0 ? '#f8f9fa' : '#ffffff'}; border-radius: 5px;">
+                                    <strong style="color: #2563eb;">Speaker ${s.speaker !== null ? s.speaker : idx}:</strong>
+                                    ${s.start !== undefined ? `<span style="color: #666; font-size: 0.85em; margin-left: 10px;">[${s.start.toFixed(1)}s - ${s.end.toFixed(1)}s]</span>` : ''}
+                                    <br>
+                                    ${s.text}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : result.transcript ? `
                         <div class="transcript-box">
                             <strong>Transcript:</strong><br><br>
                             ${result.transcript}

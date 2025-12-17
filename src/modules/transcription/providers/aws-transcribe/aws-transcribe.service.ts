@@ -104,7 +104,7 @@ export class AwsTranscribeService {
 
   async getTranscriptionResult(
     jobName: string,
-  ): Promise<{ status: string; transcript?: string; error?: string }> {
+  ): Promise<{ status: string; transcript?: string; speakers?: any; error?: string }> {
     const command = new GetTranscriptionJobCommand({
       TranscriptionJobName: jobName,
     });
@@ -131,9 +131,40 @@ export class AwsTranscribeService {
       const transcriptResponse = await fetch(transcriptUrl);
       const transcriptData = await transcriptResponse.json();
 
+      // Parse speaker labels if available
+      let speakers = null;
+      if (transcriptData.results?.speaker_labels?.segments) {
+        const segments = transcriptData.results.speaker_labels.segments;
+        const items = transcriptData.results.items || [];
+
+        // Group items by speaker segments
+        speakers = segments.map((segment: any) => {
+          const segmentStartTime = parseFloat(segment.start_time);
+          const segmentEndTime = parseFloat(segment.end_time);
+
+          // Get words for this segment
+          const segmentWords = items
+            .filter((item: any) => {
+              if (!item.start_time) return false;
+              const itemTime = parseFloat(item.start_time);
+              return itemTime >= segmentStartTime && itemTime <= segmentEndTime;
+            })
+            .map((item: any) => item.alternatives?.[0]?.content || '')
+            .filter(Boolean);
+
+          return {
+            speaker: segment.speaker_label?.replace('spk_', ''),
+            text: segmentWords.join(' '),
+            start: segmentStartTime,
+            end: segmentEndTime,
+          };
+        });
+      }
+
       return {
         status: 'COMPLETED',
         transcript: transcriptData.results.transcripts[0].transcript,
+        speakers: speakers,
       };
     } else if (job.TranscriptionJobStatus === 'FAILED') {
       return {
@@ -193,6 +224,7 @@ export class AwsTranscribeService {
         provider: 'AWS Transcribe',
         status: result.status,
         transcript: result.transcript || null,
+        speakers: result.speakers || null, // Speaker-separated segments
         error: result.error || null,
         duration: `${duration.toFixed(2)}s`,
         jobName,

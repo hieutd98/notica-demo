@@ -83,7 +83,8 @@ export class DeepgramService {
         model: model,
         smart_format: true,
         punctuate: true,
-        diarize: true,
+        diarize: true, // Enable speaker diarization
+        paragraphs: true, // Enable paragraph grouping by speaker
       };
 
       console.log(`[Deepgram] Using model: ${model}`);
@@ -139,14 +140,25 @@ export class DeepgramService {
         };
       }
 
+      // Parse speaker-separated paragraphs if available
+      const paragraphs = alternative?.paragraphs?.paragraphs || [];
+      const speakers = paragraphs.map((para: any) => ({
+        speaker: para.speaker !== undefined ? para.speaker : null,
+        text: para.sentences?.map((s: any) => s.text).join(' ') || '',
+        start: para.start,
+        end: para.end,
+        numWords: para.num_words,
+      }));
+
       console.log(
-        `[Deepgram] Transcription successful - Length: ${transcript.length} chars, Confidence: ${confidence.toFixed(2)}`,
+        `[Deepgram] Transcription successful - Length: ${transcript.length} chars, Confidence: ${confidence.toFixed(2)}, Speakers: ${speakers.length} segments`,
       );
 
       return {
         provider: 'Deepgram',
         status: 'COMPLETED',
         transcript,
+        speakers: speakers.length > 0 ? speakers : null, // Speaker-separated segments
         error: null,
         duration: `${duration.toFixed(2)}s`,
         confidence,
