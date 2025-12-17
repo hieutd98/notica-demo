@@ -318,23 +318,50 @@
             </select>
 
             <select class="language-select" id="deepgramModelSelect" style="margin-top: 15px;">
-                <optgroup label="Nova 3 (Latest)">
-                    <option value="nova-3">Nova 3</option>
-                    <option value="nova-3-general">Nova 3 General</option>
-                    <option value="nova-3-enhanced">Nova 3 Enhanced</option>
+              <!--              <optgroup label="🚀 Flux (Newest - Voice Agents)">-->
+              <!--                <option value="flux-general-en">Flux General (English)</option>-->
+              <!--              </optgroup>-->
+              <optgroup label="⭐ Nova 3 (Current Gen)">
+                <option value="nova-3" selected>Nova 3 General (Default)</option>
+                <option value="nova-3-medical">Nova 3 Medical</option>
                 </optgroup>
-                <optgroup label="Nova 2 (Recommended)">
-                    <option value="nova-2" selected>Nova 2 (Default)</option>
-                    <option value="nova-2-general">Nova 2 General</option>
-                    <option value="nova-2-enhanced">Nova 2 Enhanced</option>
+              <optgroup label="Nova 2 (Current Gen)">
+                <option value="nova-2">Nova 2 General</option>
+                <option value="nova-2-meeting">Nova 2 Meeting</option>
+                <!--                    <option value="nova-2-phonecall">Nova 2 Phone Call</option>-->
+                <!--                    <option value="nova-2-finance">Nova 2 Finance</option>-->
+                <option value="nova-2-conversationalai">Nova 2 Conversational AI</option>
+                <!--                    <option value="nova-2-voicemail">Nova 2 Voicemail</option>-->
+                <!--                    <option value="nova-2-video">Nova 2 Video</option>-->
+                <option value="nova-2-medical">Nova 2 Medical</option>
+                <!--                    <option value="nova-2-drivethru">Nova 2 Drive Thru</option>-->
+                <!--                    <option value="nova-2-automotive">Nova 2 Automotive</option>-->
+                <!--                    <option value="nova-2-atc">Nova 2 Air Traffic Control</option>-->
                 </optgroup>
-                <optgroup label="Other Models">
-                    <option value="nova">Nova (v1)</option>
-                    <option value="base">Base</option>
-                    <option value="enhanced">Enhanced</option>
-                    <option value="whisper-large">Whisper Large</option>
-                    <option value="whisper-medium">Whisper Medium</option>
-                </optgroup>
+              <optgroup label="Legacy Models">
+                <option value="nova">Nova Gen 1</option>
+                <option value="nova-phonecall">Nova Gen 1 Phone Call</option>
+                <option value="nova-medical">Nova Gen 1 Medical</option>
+                <option value="enhanced">Enhanced</option>
+                <option value="enhanced-meeting">Enhanced Meeting</option>
+                <option value="enhanced-phonecall">Enhanced Phone Call</option>
+                <option value="enhanced-finance">Enhanced Finance</option>
+                <!--                    <option value="base">Base</option>-->
+                <!--                <option value="base-meeting">Base Meeting</option>-->
+                <!--                <option value="base-phonecall">Base Phone Call</option>-->
+                <!--                <option value="base-finance">Base Finance</option>-->
+                <!--                <option value="base-conversationalai">Base Conversational AI</option>-->
+                <!--                <option value="base-voicemail">Base Voicemail</option>-->
+                <!--                <option value="base-video">Base Video</option>-->
+              </optgroup>
+              <!--              <optgroup label="Whisper (OpenAI)">-->
+              <!--                <option value="whisper">Whisper</option>-->
+              <!--                <option value="whisper-tiny">Whisper Tiny</option>-->
+              <!--                <option value="whisper-base">Whisper Base</option>-->
+              <!--                <option value="whisper-small">Whisper Small</option>-->
+              <!--                    <option value="whisper-medium">Whisper Medium</option>-->
+              <!--                <option value="whisper-large">Whisper Large</option>-->
+              <!--                </optgroup>-->
             </select>
 
             <button class="upload-btn" id="uploadBtn" disabled>

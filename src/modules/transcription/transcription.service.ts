@@ -16,7 +16,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
-    deepgramModel: string = 'nova-2',
+    deepgramModel: string = 'nova-3',
   ) {
     const startTime = Date.now();
 
@@ -60,7 +60,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
-    deepgramModel: string = 'nova-2',
+    deepgramModel: string = 'nova-3',
   ) {
     if (provider === 'aws') {
       return this.awsTranscribeService.transcribeFile(
@@ -83,7 +83,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
-    deepgramModel: string = 'nova-2',
+    deepgramModel: string = 'nova-3',
   ): Promise<string> {
     const jobId = this.jobManagerService.createComparisonJob(
       fileName,
@@ -106,7 +106,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
-    deepgramModel: string = 'nova-2',
+    deepgramModel: string = 'nova-3',
   ): Promise<string> {
     const jobId = this.jobManagerService.createJob(
       fileName,
@@ -131,7 +131,7 @@ export class TranscriptionService {
     this.jobManagerService.updateJobStatus(jobId, JobStatus.PROCESSING);
 
     const startTime = Date.now();
-    const deepgramModel = job.deepgramModel || 'nova-2';
+    const deepgramModel = job.deepgramModel || 'nova-3';
 
     // Run both providers independently (fire-and-forget)
     // Each provider will update the job when it completes
@@ -169,7 +169,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string,
-    deepgramModel: string = 'nova-2',
+    deepgramModel: string = 'nova-3',
   ): Promise<void> {
     try {
       let result;
@@ -207,7 +207,7 @@ export class TranscriptionService {
     try {
       this.jobManagerService.updateJobStatus(jobId, JobStatus.PROCESSING);
 
-      const deepgramModel = job.deepgramModel || 'nova-2';
+      const deepgramModel = job.deepgramModel || 'nova-3';
       const result = await this.transcribeWithProvider(
         job.provider,
         job.filePath,

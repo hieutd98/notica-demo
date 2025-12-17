@@ -53,7 +53,7 @@ export class DeepgramService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en',
-    model: string = 'nova-2',
+    model: string = 'nova-3',
   ): Promise<any> {
     const startTime = Date.now();
 

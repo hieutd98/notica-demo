@@ -75,7 +75,7 @@ export class TranscriptionController {
     }
 
     const languageCode = language || 'en-US';
-    const model = deepgramModel || 'nova-2';
+    const model = deepgramModel || 'nova-3';
 
     try {
       // Return job ID immediately instead of waiting for transcription
@@ -161,7 +161,7 @@ export class TranscriptionController {
     }
 
     const languageCode = language || 'en-US';
-    const model = deepgramModel || 'nova-2';
+    const model = deepgramModel || 'nova-3';
 
     try {
       // Return job ID immediately instead of waiting for transcription
