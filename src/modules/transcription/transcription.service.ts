@@ -16,6 +16,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
+    deepgramModel: string = 'nova-2',
   ) {
     const startTime = Date.now();
 
@@ -30,6 +31,7 @@ export class TranscriptionService {
         filePath,
         fileName,
         languageCode.split('-')[0],
+        deepgramModel,
       ), // Deepgram uses 'en' instead of 'en-US'
     ]);
 
@@ -58,6 +60,7 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
+    deepgramModel: string = 'nova-2',
   ) {
     if (provider === 'aws') {
       return this.awsTranscribeService.transcribeFile(
@@ -70,6 +73,7 @@ export class TranscriptionService {
         filePath,
         fileName,
         languageCode.split('-')[0],
+        deepgramModel,
       );
     }
   }
@@ -79,11 +83,13 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
+    deepgramModel: string = 'nova-2',
   ): Promise<string> {
-    const jobId = this.jobManagerService.createJob(
+    const jobId = this.jobManagerService.createComparisonJob(
       fileName,
       filePath,
       languageCode,
+      deepgramModel,
     );
 
     // Run transcription in background
@@ -100,12 +106,14 @@ export class TranscriptionService {
     filePath: string,
     fileName: string,
     languageCode: string = 'en-US',
+    deepgramModel: string = 'nova-2',
   ): Promise<string> {
     const jobId = this.jobManagerService.createJob(
       fileName,
       filePath,
       languageCode,
       provider,
+      deepgramModel,
     );
 
     // Run transcription in background
@@ -120,28 +128,75 @@ export class TranscriptionService {
     const job = this.jobManagerService.getJob(jobId);
     if (!job) return;
 
+    this.jobManagerService.updateJobStatus(jobId, JobStatus.PROCESSING);
+
+    const startTime = Date.now();
+    const deepgramModel = job.deepgramModel || 'nova-2';
+
+    // Run both providers independently (fire-and-forget)
+    // Each provider will update the job when it completes
+    const awsPromise = this.runProviderTranscription(
+      jobId,
+      'aws',
+      job.filePath,
+      job.fileName,
+      job.languageCode,
+      deepgramModel,
+    );
+
+    const deepgramPromise = this.runProviderTranscription(
+      jobId,
+      'deepgram',
+      job.filePath,
+      job.fileName,
+      job.languageCode,
+      deepgramModel,
+    );
+
+    // Wait for both to complete (for cleanup purposes only)
+    await Promise.allSettled([awsPromise, deepgramPromise]);
+
+    // Clean up uploaded file after all providers are done
+    if (fs.existsSync(job.filePath)) {
+      fs.unlinkSync(job.filePath);
+    }
+  }
+
+  // Run a single provider and update job immediately when done
+  private async runProviderTranscription(
+    jobId: string,
+    provider: 'aws' | 'deepgram',
+    filePath: string,
+    fileName: string,
+    languageCode: string,
+    deepgramModel: string = 'nova-2',
+  ): Promise<void> {
     try {
-      this.jobManagerService.updateJobStatus(jobId, JobStatus.PROCESSING);
-
-      const result = await this.compareTranscriptions(
-        job.filePath,
-        job.fileName,
-        job.languageCode,
-      );
-
-      this.jobManagerService.completeJob(jobId, result);
-
-      // Clean up uploaded file after processing
-      if (fs.existsSync(job.filePath)) {
-        fs.unlinkSync(job.filePath);
+      let result;
+      if (provider === 'aws') {
+        result = await this.awsTranscribeService.transcribeFile(
+          filePath,
+          fileName,
+          languageCode,
+        );
+      } else {
+        result = await this.deepgramService.transcribeFile(
+          filePath,
+          fileName,
+          languageCode.split('-')[0],
+          deepgramModel,
+        );
       }
+
+      // Update job immediately when this provider completes
+      this.jobManagerService.updateProviderResult(jobId, provider, result);
     } catch (error) {
-      this.jobManagerService.failJob(jobId, error.message);
-
-      // Clean up uploaded file if error occurs
-      if (fs.existsSync(job.filePath)) {
-        fs.unlinkSync(job.filePath);
-      }
+      console.error(`Provider ${provider} failed for job ${jobId}:`, error);
+      this.jobManagerService.failProviderResult(
+        jobId,
+        provider,
+        error.message,
+      );
     }
   }
 
@@ -152,11 +207,13 @@ export class TranscriptionService {
     try {
       this.jobManagerService.updateJobStatus(jobId, JobStatus.PROCESSING);
 
+      const deepgramModel = job.deepgramModel || 'nova-2';
       const result = await this.transcribeWithProvider(
         job.provider,
         job.filePath,
         job.fileName,
         job.languageCode,
+        deepgramModel,
       );
 
       this.jobManagerService.completeJob(jobId, result);

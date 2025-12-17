@@ -317,6 +317,26 @@
                 <option value="zh-CN">Chinese (Simplified)</option>
             </select>
 
+            <select class="language-select" id="deepgramModelSelect" style="margin-top: 15px;">
+                <optgroup label="Nova 3 (Latest)">
+                    <option value="nova-3">Nova 3</option>
+                    <option value="nova-3-general">Nova 3 General</option>
+                    <option value="nova-3-enhanced">Nova 3 Enhanced</option>
+                </optgroup>
+                <optgroup label="Nova 2 (Recommended)">
+                    <option value="nova-2" selected>Nova 2 (Default)</option>
+                    <option value="nova-2-general">Nova 2 General</option>
+                    <option value="nova-2-enhanced">Nova 2 Enhanced</option>
+                </optgroup>
+                <optgroup label="Other Models">
+                    <option value="nova">Nova (v1)</option>
+                    <option value="base">Base</option>
+                    <option value="enhanced">Enhanced</option>
+                    <option value="whisper-large">Whisper Large</option>
+                    <option value="whisper-medium">Whisper Medium</option>
+                </optgroup>
+            </select>
+
             <button class="upload-btn" id="uploadBtn" disabled>
                 🚀 Start Comparison
             </button>
@@ -341,6 +361,7 @@
         const fileNameDiv = document.getElementById('fileName');
         const uploadBtn = document.getElementById('uploadBtn');
         const languageSelect = document.getElementById('languageSelect');
+        const deepgramModelSelect = document.getElementById('deepgramModelSelect');
         const loading = document.getElementById('loading');
         const results = document.getElementById('results');
         const errorMessage = document.getElementById('errorMessage');
@@ -377,7 +398,7 @@
               const apiUrl = window.location.origin;
 
               // Upload and get job ID
-              const uploadResponse = await fetch(`${apiUrl}/transcription/upload?language=${languageSelect.value}`, {
+              const uploadResponse = await fetch(`${apiUrl}/transcription/upload?language=${languageSelect.value}&deepgramModel=${deepgramModelSelect.value}`, {
                     method: 'POST',
                     body: formData
                 });
@@ -402,6 +423,7 @@
         async function pollJobStatus(jobId, apiUrl) {
           const maxAttempts = 500;
           let attempts = 0;
+          let hasDisplayedResults = false;
 
           while (attempts < maxAttempts) {
             try {
@@ -414,7 +436,24 @@
 
               const job = data.job;
 
-              if (job.status === 'completed') {
+              // Display partial results immediately as they become available
+              if (job.providerResults) {
+                displayPartialResults(job);
+                hasDisplayedResults = true;
+
+                // If both providers are done, stop polling
+                const awsStatus = job.providerResults.aws?.status;
+                const deepgramStatus = job.providerResults.deepgram?.status;
+                const allDone = (awsStatus === 'completed' || awsStatus === 'failed') &&
+                               (deepgramStatus === 'completed' || deepgramStatus === 'failed');
+
+                if (allDone) {
+                  loading.style.display = 'none';
+                  uploadBtn.disabled = false;
+                  return;
+                }
+              } else if (job.status === 'completed') {
+                // Fallback for single provider jobs
                 displayResults(job.result);
                 loading.style.display = 'none';
                 uploadBtn.disabled = false;
@@ -432,6 +471,70 @@
           }
 
           throw new Error('Job timeout - please try again');
+        }
+
+        function displayPartialResults(job) {
+            // Display basic info (without comparison summary since not all providers may be done)
+            const awsResult = job.providerResults.aws;
+            const deepgramResult = job.providerResults.deepgram;
+
+            const awsComplete = awsResult?.status === 'completed' || awsResult?.status === 'failed';
+            const deepgramComplete = deepgramResult?.status === 'completed' || deepgramResult?.status === 'failed';
+            const allComplete = awsComplete && deepgramComplete;
+
+            // Only show comparison summary if both are complete
+            if (allComplete) {
+                const awsDuration = awsResult?.result?.duration ? parseFloat(awsResult.result.duration) : Infinity;
+                const deepgramDuration = deepgramResult?.result?.duration ? parseFloat(deepgramResult.result.duration) : Infinity;
+                const faster = awsDuration < deepgramDuration ? 'AWS Transcribe' : 'Deepgram';
+                const timeDiff = Math.abs(awsDuration - deepgramDuration).toFixed(2);
+
+                comparisonSummary.innerHTML = `
+                    <h3>⚡ Comparison Summary</h3>
+                    <div class="summary-item">
+                        <span>File:</span>
+                        <strong>${job.fileName}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Language:</span>
+                        <strong>${job.languageCode}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Faster Provider:</span>
+                        <strong>${faster}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Time Difference:</span>
+                        <strong>${timeDiff}s</strong>
+                    </div>
+                `;
+            } else {
+                comparisonSummary.innerHTML = `
+                    <h3>⚡ Transcription In Progress</h3>
+                    <div class="summary-item">
+                        <span>File:</span>
+                        <strong>${job.fileName}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Language:</span>
+                        <strong>${job.languageCode}</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Status:</span>
+                        <strong>Results appearing as they complete ⚡</strong>
+                    </div>
+                `;
+            }
+
+            // Display individual results in 2-column grid
+            resultsContent.innerHTML = `
+                <div class="results-grid">
+                    ${createResultCard('aws', 'AWS Transcribe', awsResult)}
+                    ${createResultCard('deepgram', 'Deepgram', deepgramResult)}
+                </div>
+            `;
+
+            results.style.display = 'block';
         }
 
         function displayResults(data) {
@@ -471,7 +574,51 @@
             results.style.display = 'block';
         }
 
-        function createResultCard(provider, name, result) {
+        function createResultCard(provider, name, providerResult) {
+            // Handle loading state for pending/processing providers
+            if (!providerResult || providerResult.status === 'pending' || providerResult.status === 'processing') {
+                return `
+                    <div class="result-card ${provider}">
+                        <div class="result-header">
+                            <span class="provider-name">${name}</span>
+                            <span class="status" style="background: #fff3cd; color: #856404;">Processing...</span>
+                        </div>
+                        <div style="text-align: center; padding: 40px 20px; color: #666;">
+                            <div class="spinner" style="margin: 0 auto 20px;"></div>
+                            <p>Transcribing audio...</p>
+                            <p style="font-size: 0.9em; margin-top: 10px;">Results will appear here when ready</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Handle failed state
+            if (providerResult.status === 'failed') {
+                return `
+                    <div class="result-card ${provider}">
+                        <div class="result-header">
+                            <span class="provider-name">${name}</span>
+                            <span class="status failed">Failed</span>
+                        </div>
+                        <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 4px solid #dc3545;">
+                            <strong>⚠️ Error:</strong><br>
+                            <span style="margin-top: 8px; display: block;">${providerResult.error || 'Transcription failed'}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Handle completed state
+            const result = providerResult.result;
+            if (!result) {
+                return `<div class="result-card ${provider}">
+                    <div class="result-header">
+                        <span class="provider-name">${name}</span>
+                        <span class="status failed">No Data</span>
+                    </div>
+                </div>`;
+            }
+
             return `
                 <div class="result-card ${provider}">
                     <div class="result-header">

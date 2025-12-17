@@ -68,12 +68,14 @@ export class TranscriptionController {
   async uploadAndCompare(
     @UploadedFile() file: Express.Multer.File,
     @Query('language') language?: string,
+    @Query('deepgramModel') deepgramModel?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
     const languageCode = language || 'en-US';
+    const model = deepgramModel || 'nova-2';
 
     try {
       // Return job ID immediately instead of waiting for transcription
@@ -82,6 +84,7 @@ export class TranscriptionController {
           file.path,
           file.originalname,
           languageCode,
+          model,
         );
 
       return {
@@ -145,6 +148,7 @@ export class TranscriptionController {
     @UploadedFile() file: Express.Multer.File,
     @Query('provider') provider: 'aws' | 'deepgram',
     @Query('language') language?: string,
+    @Query('deepgramModel') deepgramModel?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -157,6 +161,7 @@ export class TranscriptionController {
     }
 
     const languageCode = language || 'en-US';
+    const model = deepgramModel || 'nova-2';
 
     try {
       // Return job ID immediately instead of waiting for transcription
@@ -166,6 +171,7 @@ export class TranscriptionController {
           file.path,
           file.originalname,
           languageCode,
+          model,
         );
 
       return {
@@ -200,6 +206,7 @@ export class TranscriptionController {
         languageCode: job.languageCode,
         provider: job.provider,
         result: job.result,
+        providerResults: job.providerResults, // Include partial results for comparison jobs
         error: job.error,
         createdAt: job.createdAt,
         completedAt: job.completedAt,
