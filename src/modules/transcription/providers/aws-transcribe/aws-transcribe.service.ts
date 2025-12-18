@@ -104,7 +104,14 @@ export class AwsTranscribeService {
 
   async getTranscriptionResult(
     jobName: string,
-  ): Promise<{ status: string; transcript?: string; speakers?: any; error?: string }> {
+  ): Promise<{
+    status: string;
+    transcript?: string;
+    speakers?: any;
+    language?: string;
+    languageScore?: number;
+    error?: string;
+  }> {
     const command = new GetTranscriptionJobCommand({
       TranscriptionJobName: jobName,
     });
@@ -161,10 +168,16 @@ export class AwsTranscribeService {
         });
       }
 
+      // Get language information
+      const language = job.LanguageCode;
+      const languageScore = job.IdentifiedLanguageScore;
+
       return {
         status: 'COMPLETED',
         transcript: transcriptData.results.transcripts[0].transcript,
         speakers: speakers,
+        language: language,
+        languageScore: languageScore,
       };
     } else if (job.TranscriptionJobStatus === 'FAILED') {
       return {
@@ -225,6 +238,8 @@ export class AwsTranscribeService {
         status: result.status,
         transcript: result.transcript || null,
         speakers: result.speakers || null, // Speaker-separated segments
+        language: result.language || null,
+        languageScore: result.languageScore || null,
         error: result.error || null,
         duration: `${duration.toFixed(2)}s`,
         jobName,
