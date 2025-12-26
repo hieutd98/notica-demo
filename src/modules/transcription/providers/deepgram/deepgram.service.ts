@@ -118,8 +118,23 @@ export class DeepgramService {
       const detectedLanguage = channel?.detected_language;
       const confidence = alternative?.confidence || 0;
 
-      console.log('[Deepgram] Response metadata:', result?.metadata);
-      console.log(JSON.stringify(result, null, 2));
+      // Extract actual model used from metadata
+      // model_info is an object with UUID as key, e.g.:
+      // { 'uuid': { name: '2-general-nova', version: '...', arch: 'nova-2' } }
+      const modelInfo = result?.metadata?.model_info;
+      let actualModel = model; // fallback to requested model
+
+      if (modelInfo) {
+        const firstModelKey = Object.keys(modelInfo)[0];
+        if (firstModelKey && modelInfo[firstModelKey]) {
+          const modelData = modelInfo[firstModelKey];
+          // Use arch (nova-2) or name (2-general-nova) based on preference
+          actualModel = modelData.name || modelData.arch || model;
+        }
+      }
+
+      console.log('[Deepgram] Model info:', modelInfo);
+      console.log('[Deepgram] Actual model used:', actualModel);
 
       // Check if we actually got a transcript
       if (!transcript) {
@@ -163,6 +178,7 @@ export class DeepgramService {
         duration: `${duration.toFixed(2)}s`,
         confidence,
         detectedLanguage: detectedLanguage || null,
+        model: actualModel, // Actual model used by Deepgram
       };
     } catch (error) {
       const endTime = Date.now();

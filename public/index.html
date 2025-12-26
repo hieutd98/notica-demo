@@ -658,6 +658,12 @@
                             <div class="meta-label">Processing Time</div>
                             <div class="meta-value">${result.duration}</div>
                         </div>
+                        ${result.model ? `
+                            <div class="meta-item">
+                                <div class="meta-label">Model Used</div>
+                                <div class="meta-value">${result.model}</div>
+                            </div>
+                        ` : ''}
                         ${result.language ? `
                             <div class="meta-item">
                                 <div class="meta-label">Language</div>
